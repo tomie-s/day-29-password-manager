@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter import messagebox
 from random import randint, choice, shuffle
 import pyperclip
+import json
 
 
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
@@ -24,23 +25,58 @@ def generate_password():
     password_entry.insert(0, password)
 
 
+# ---------------------------- FIND PASSWORD ------------------------------- #
+def find_password():
+    website = website_entry.get().capitalize()
+
+    try:
+        with open('pw_data.json', mode='r') as file:
+            file_data = json.load(file)
+    except FileNotFoundError:
+        messagebox.showinfo(title='Error', message="No data file found.")
+    else:
+        if website in file_data:
+            username = file_data[website]['username']
+            password = file_data[website]['password']
+            messagebox.showinfo(title=website, message=f'Email: {username} \nPassword: {password}')
+        else:
+            messagebox.showinfo(title='Error', message=f"No details saved for {website}.")
+
+
 # ---------------------------- SAVE PASSWORD ------------------------------- #
 def save():
-    website = website_entry.get()
+    website = website_entry.get().capitalize()
     username = username_entry.get()
     new_password = password_entry.get()
+
+    new_data = {
+        website: {
+            'username': username,
+            'password': new_password
+        }
+    }
+
+    # save data file that contains new info
+    def file_write(new_file):
+        with open('pw_data.json', mode='w') as data_file:
+            json.dump(new_file, data_file, indent=4)
 
     if len(website) == 0 or len(new_password) == 0:
         messagebox.showwarning('Blank Field!', "Please don't leave any field empty")
     else:
-        is_ok = messagebox.askokcancel(f'{website}', f'Here are the details entered \nUsername: {username} '
-                                                     f'\nPassword: {new_password} \nIs it okay to save?')
-
-        if is_ok:
-            with open('pw_data.txt', mode='a') as file:
-                file.write(f'{website} | {username} | {new_password}\n')
-                website_entry.delete(0, END)
-                password_entry.delete(0, END)
+        try:
+            with open('pw_data.json', mode='r') as file:
+                # open and read the data file
+                file_data = json.load(file)
+        except FileNotFoundError:
+            file_write(new_data)
+        else:
+            # update data file with new info
+            file_data.update(new_data)
+            file_write(file_data)
+        finally:
+            website_entry.delete(0, END)
+            password_entry.delete(0, END)
 
 
 # ---------------------------- UI SETUP ------------------------------- #
@@ -64,8 +100,8 @@ password_label = Label(text='Password:')
 password_label.grid(column=0, row=3)
 
 # Text inputs
-website_entry = Entry(width=38)
-website_entry.grid(column=1, row=1, columnspan=2, sticky='w')
+website_entry = Entry(width=21)
+website_entry.grid(column=1, row=1, sticky='w')
 website_entry.focus()
 
 username_entry = Entry(width=38)
@@ -76,7 +112,10 @@ password_entry = Entry(width=21)
 password_entry.grid(column=1, row=3, sticky='w')
 
 # Buttons for screen
-generate_button = Button(text='Generate Password', highlightthickness=0, command=generate_password)
+search_button = Button(text='Search', width=13, command=find_password)
+search_button.grid(column=2, row=1)
+
+generate_button = Button(text='Generate Password', command=generate_password)
 generate_button.grid(column=2, row=3)
 
 add_button = Button(text='Add', width=36, command=save)
